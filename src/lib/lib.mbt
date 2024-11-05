@@ -363,3 +363,11 @@ pub fn pow(x : Int, exp : Int) -> Int {
   }
   result
 }
+
+pub fn powf(x : Float, exp : Int) -> Float {
+  let mut result : Float = 1.0
+  for _i = 0; _i < exp; _i = _i + 1 {
+    result *= x
+  }
+  result
+}
