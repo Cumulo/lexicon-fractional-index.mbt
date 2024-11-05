@@ -10,9 +10,9 @@ type! KeyError String
 /// Either a or b can be empty strings. If a is empty it indicates smallest key,
 /// If b is empty it indicates largest key.
 /// b must be empty string or > a.
-pub fn key_between(a: Option[String], b: Option[String]) -> String!KeyError {
+pub fn key_between(a : String?, b : String?) -> String!KeyError {
   // println!("between: {} {}", a, b);
-  if not (a.is_empty()) {
+  if not(a.is_empty()) {
     validate_order_key!(a.unwrap())
   }
   if not(b.is_empty()) {
@@ -22,17 +22,15 @@ pub fn key_between(a: Option[String], b: Option[String]) -> String!KeyError {
     raise KeyError(
       "invalid order: {} >= {}" +
       a.unwrap().to_string() +
-      b.unwrap().to_string()
+      b.unwrap().to_string(),
     )
   }
   if a.is_empty() {
     if b.is_empty() {
       return ZERO
     }
-
     let int_b = get_int_part!(b.unwrap())
-
-    let float_part_b = b.unwrap()[int_b.length()..]
+    let float_part_b = b.unwrap().substring(start=int_b.length())
     if int_b == SMALLEST_INT {
       return int_b + midpoint("", float_part_b)
     }
@@ -40,37 +38,30 @@ pub fn key_between(a: Option[String], b: Option[String]) -> String!KeyError {
       return int_b
     }
     let res = decrement_int!(int_b)
-
     if res.is_empty() {
-      raise KeyError("range underflow");
+      raise KeyError("range underflow")
     }
     return res
   }
-
   if b.is_empty() {
     let int_a = get_int_part!(a.unwrap())
-
-    let float_part_a = a.unwrap()[int_a.length()..]
+    let float_part_a = a.unwrap().substring(start=int_a.length())
     let i = increment_int!(int_a)
     if i.is_empty() {
       return int_a + midpoint(float_part_a, "")
     }
     return i
   }
-
   let int_a = get_int_part!(a.unwrap())
-
-  let float_part_a = a.unwrap()[int_a.length()..];
+  let float_part_a = a.unwrap().substring(start=int_a.length())
   let int_b = get_int_part!(b.unwrap())
-
-  let float_part_b = b.unwrap()[int_b.length()..];
+  let float_part_b = b.unwrap().substring(start=int_b.length())
   if int_a == int_b {
-    return Ok(int_a + midpoint(float_part_a, float_part_b));
+    return int_a + midpoint(float_part_a, float_part_b)
   }
-  let i = increment_int(&int_a)?;
-
+  let i = increment_int!(int_a)
   if i.is_empty() {
-    return Err("range overflow".to_owned());
+    raise KeyError("range overflow")
   }
   if i < b.unwrap() {
     return i
@@ -82,51 +73,57 @@ pub fn key_between(a: Option[String], b: Option[String]) -> String!KeyError {
 /// a == "" means first possible string.
 /// b == "" means last possible string.
 /// a, b MUST be str without head
-fn midpoint(a: &str, b: &str) -> String {
-  if !b.is_empty() {
+fn midpoint(a : String, b : String) -> String {
+  if not(b.is_empty()) {
     // remove longest common prefix.  pad `a` with 0s as we
     // go.  note that we don't need to pad `b`, because it can't
     // end before `a` while traversing the common prefix.
-    let mut i = 0;
-    for _ in 0..a.len() {
-      let mut c: char = '0';
-      if a.len() > i {
-        c = a.chars().nth(i).unwrap()
+    let mut i = 0
+    for _i = 0; _i < a.length(); _i = _i + 1 {
+      let mut c : Char = '0'
+      if a.length() > i {
+        c = a.to_array()[i]
       }
-      if i >= b.len() || c != b.chars().nth(i).unwrap() {
-        break;
+      if i >= b.length() || c != b[i] {
+        break
       }
-      i += 1;
+      i += 1
     }
     if i > 0 {
-      if i as i64 > a.len() as i64 - 1 {
-        return b[0..i].to_string() + &midpoint("", &b[i..]);
+      if i > a.length() - 1 {
+        return b.substring(end=i).to_string() +
+          midpoint("", b.substring(start=i))
       } else {
-        return b[0..i].to_string() + &midpoint(&a[i..], &b[i..]);
+        return b.substring(end=i) +
+          midpoint(a.substring(start=1), b.substring(start=i))
       }
     }
   }
 
   // first digits (or lack of digit) are different
-  let mut digit_a = 0;
+  let mut digit_a = 0
   if not(a.is_empty()) {
-    digit_a = BASE62_DIGITS.find(a.chars().next().unwrap()).unwrap()
+    digit_a = BASE62_DIGITS.index_of(a[0].to_string())
   }
-  let mut digit_b = BASE62_DIGITS.len();
+  let mut digit_b = BASE62_DIGITS.length()
   if not(b.is_empty()) {
-    digit_b = BASE62_DIGITS.find(b.chars().next().unwrap()).unwrap()
+    digit_b = BASE62_DIGITS.index_of(b[0].to_string())
   }
   if digit_b - digit_a > 1 {
-    let mid_digit = (0.5 * (digit_a + digit_b) as f64).round();
-    return BASE62_DIGITS.chars().nth(mid_digit).unwrap().to_string();
+    let mid_digit = (0.5 * (digit_a + digit_b).to_double())
+      .round()
+      .reinterpret_as_int64()
+      .to_int()
+    return BASE62_DIGITS[mid_digit].to_string()
   }
 
   // first digits are consecutive
   if b.length() > 1 {
-    if not(b.starts_with('0')) {
-      return b[0..1].to_string();
+    if not(b.starts_with('0'.to_string())) {
+      return b.substring(end=1)
     }
-    return BASE62_DIGITS.chars().nth(digit_a).unwrap().to_string() + midpoint("", b[1..]);
+    return BASE62_DIGITS[digit_a].to_string() +
+      midpoint("", b.substring(start=1))
   }
 
   // `b` is empty or has length 1 (a single digit).
@@ -135,15 +132,15 @@ fn midpoint(a: &str, b: &str) -> String {
   // given, for example, midpoint('49', '5'), return
   // '4' + midpoint('9', null), which will become
   // '4' + '9' + midpoint('', null), which is '495'
-  let mut sa = "";
+  let mut sa = ""
   if not(a.is_empty()) {
-    sa = a[1..]
+    sa = a.substring(start=1)
   }
-  return BASE62_DIGITS.to_array()[digit_a].unwrap().to_string() + midpoint(sa, "")
+  return BASE62_DIGITS.to_array()[digit_a].to_string() + midpoint(sa, "")
 }
 
 fn validate_int(i : String) -> Unit!KeyError {
-  let exp = get_int_len!(i.to_array().next().unwrap())
+  let exp = get_int_len!(i[0])
   if i.length() != exp {
     raise KeyError("invalid integer part of order key: " + i)
   }
@@ -154,9 +151,9 @@ fn validate_int(i : String) -> Unit!KeyError {
 // A-Z -> 28-2
 // a-z -> 2-28
 fn get_int_len(head : Char) -> Int!KeyError {
-  if ('a'..='z').contains(head) {
+  if 'a' <= head && head <= 'z' {
     head.to_int() - 'a'.to_int() + 2
-  } else if ('A'..='Z').contains(head) {
+  } else if 'A' <= head && head <= 'Z' {
     'Z'.to_int() - head.to_int() + 2
   } else {
     raise KeyError("invalid order key head: " + head.to_string())
@@ -165,7 +162,7 @@ fn get_int_len(head : Char) -> Int!KeyError {
 
 /// throw error when shorter than `get_int_len(head)`
 fn get_int_part(key : String) -> String!KeyError {
-  let int_part_len = get_int_len!(key.to_array().next().unwrap())
+  let int_part_len = get_int_len!(key[0])
   if int_part_len > key.length() {
     raise KeyError("invalid order key: " + key)
   }
@@ -193,25 +190,22 @@ fn validate_order_key(key : String) -> Unit!KeyError {
 
 /// returns error if x is invalid, or if range is exceeded
 /// x MUST be int without float part
-fn increment_int(x: String) -> String!KeyError {
+fn increment_int(x : String) -> String!KeyError {
   validate_int!(x)
-
-  let mut digs: Array[Char] = x.to_array();
-  let head = digs[0];
-  let _v=digs.remove(0)
-  let mut carry = true;
-
-  let mut i = digs.length() - 1;
+  let digs : Array[Char] = x.to_array()
+  let head = digs[0]
+  let _v = digs.remove(0)
+  let mut carry = true
+  let mut i = digs.length() - 1
   while carry && i >= 0 {
-    let d = BASE62_DIGITS.to_array().find(digs[i]).unwrap() + 1;
+    let d = BASE62_DIGITS.index_of(digs[i].to_string()) + 1
     if d == BASE62_DIGITS.length() {
-      digs[i] = '0';
+      digs[i] = '0'
     } else {
-      digs[i] = BASE62_DIGITS.to_array()[d];
-      carry = false;
+      digs[i] = BASE62_DIGITS.to_array()[d]
+      carry = false
     }
-
-    i -= 1;
+    i -= 1
   }
   if carry {
     if head == 'Z' {
@@ -220,99 +214,89 @@ fn increment_int(x: String) -> String!KeyError {
     if head == 'z' {
       return ""
     }
-    let h = (head.to_int() + 1);
-    if h > 'a' {
+    let h = head.to_uint() + 1
+    if h > 'a'.to_uint() {
       // a-z -> incr
       digs.push('0')
     } else {
       // A-Z -> decr
       let _v = digs.pop()
+
     }
-    return h.to_string() + digs.iter().collect::<String>()
+    return h.to_string() + String::from_array(digs)
   }
-  head.to_string() + digs.iter().collect::<String>()
+  head.to_string() + String::from_array(digs)
 }
 
-fn decrement_int(x: String) -> String!KeyError {
+fn decrement_int(x : String) -> String!KeyError {
   validate_int!(x)
-
-  let mut digs: Array[Char] = x.chars().collect();
-
-  let head = digs[0];
+  let digs : Array[Char] = x.to_array()
+  let head = digs[0]
   let _t = digs.remove(0)
-  let mut borrow = true;
-
-  let mut i = digs.length() - 1;
+  let mut borrow = true
+  let mut i = digs.length() - 1
   while borrow && i >= 0 {
-    let d: Int64 = BASE62_DIGITS.find(digs[i as usize]).unwrap() as i64 - 1;
-
+    let d = BASE62_DIGITS.index_of(digs[i].to_string()) - 1
     if d == -1 {
-      digs[i] = BASE62_DIGITS.to_array().nth_back(0).unwrap();
+      digs[i] = BASE62_DIGITS[-1]
     } else {
-      digs[i] = BASE62_DIGITS.to_array()[d.to_int()]
+      digs[i] = BASE62_DIGITS.to_array()[d]
       borrow = false
     }
-    i -= 1;
+    i -= 1
   }
-
   if borrow {
     if head == 'a' {
-      return "Z" + BASE62_DIGITS.chars().nth_back(0).unwrap()
+      return "Z" + BASE62_DIGITS.to_array()[-1].to_string()
     }
     if head == 'A' {
       return ""
     }
-    let h: Char = (head.to_uint() - 1) as char;
-    if h < 'Z' {
-      digs.push(BASE62_DIGITS.to_array().nth_back(0).unwrap());
+    let h = head.to_uint() - 1
+    if h < 'Z'.to_uint() {
+      digs.push(BASE62_DIGITS.to_array()[-1])
     } else {
       let _v = digs.pop()
-    }
-    return Ok(h.to_string() + digs.iter().collect::<String>());
-  }
 
-  head.to_string() + digs.iter().collect::<String>()
+    }
+    return h.to_string() + String::from_array(digs)
+  }
+  head.to_string() + String::from_array(digs)
 }
 
 /// float64_approx converts a key as generated by key_between() to a float64.
 /// Because the range of keys is far larger than float64 can represent
 /// accurately, this is necessarily approximate. But for many use cases it should
 /// be, as they say, close enough for jazz.
-pub fn float64_approx(key: String) -> Double!KeyError {
+pub fn float64_approx(key : String) -> Double!KeyError {
   if key.is_empty() {
     raise KeyError("invalid order key")
   }
-
   validate_order_key!(key)
-
   let ip = get_int_part!(key)
-
-  let mut digs: Array[Char] = ip.to_array();
-  let head = digs[0];
+  let digs : Array[Char] = ip.to_array()
+  let head = digs[0]
   let _v = digs.remove(0)
-  let mut rv = 0.0;
-  for i in 0..digs.len() {
-    let d = digs[digs.len() - i - 1];
-    let p = BASE62_DIGITS.find(d);
-    if p == None {
-      raise KeyError("invalid order key: "+ key)
+  let mut rv : Double = 0.0
+  for i = 0; i < digs.length(); i = i + 1 {
+    let d = digs[digs.length() - i - 1]
+    let p = BASE62_DIGITS.index_of(d.to_string())
+    if p < 0 {
+      raise KeyError("invalid order key: " + key)
     }
-    rv += (BASE62_DIGITS.len() as f64).powf(i as f64) * p.unwrap() as f64
+    rv += (pow(BASE62_DIGITS.length(), i) * p).to_float().to_double()
   }
-
-  let fp = key[ip.len()..].to_owned();
-  for (i, d) in fp.chars().enumerate() {
-    let p = BASE62_DIGITS.find(d as char);
-    if p == None {
+  let fp = key.substring(start=ip.length())
+  for i, d in fp.to_array() {
+    let p = BASE62_DIGITS.index_of(d.to_string())
+    if p < 0 {
       raise KeyError("invalid key: " + key)
     }
-    rv += (p.unwrap() as f64) / (BASE62_DIGITS.len() as f64).powf((i + 1) as f64)
+    rv += (p / pow(BASE62_DIGITS.length(), i + 1)).to_double()
   }
-
   if head < 'a' {
-    rv *= -1.0;
+    rv *= -1.0
   }
-
   rv
 }
 
@@ -320,55 +304,62 @@ pub fn float64_approx(key: String) -> Double!KeyError {
 /// Either a or b can be empty strings. If a is empty it indicates smallest key,
 /// If b is empty it indicates largest key.
 /// b must be empty string or > a.
-pub fn n_keys_between(a: Option[String], b: Option[String], n: Int) -> Array[String]!KeyError {
+pub fn n_keys_between(
+  a : String?,
+  b : String?,
+  n : Int
+) -> Array[String]!KeyError {
   if n == 0 {
     return []
   }
   if n == 1 {
     let c = key_between!(a, b)
-
     return [c]
   }
   if b.is_empty() {
     let mut c = key_between!(a, b)
-    let mut result: Array[String] = [];
-    result.push(c);
-
-    for _i in 0..((n as usize) - 1) {
+    let result : Array[String] = []
+    result.push(c)
+    for _i = 0; _i < n - 1; _i = _i + 1 {
       c = key_between!(Some(c), b)
-      result.push(c);
+      result.push(c)
     }
-
     return result
   }
   if a.is_empty() {
     let mut c = key_between!(a, b)
-
-    let mut result: Array[String] = []
-    result.push(c.to_owned());
-    for _i in 0..(n as usize - 1) {
-      c = key_between(a, &Some(c))?;
-      result.push(c.to_owned());
+    let mut result : Array[String] = []
+    result.push(c)
+    for _i = 0; _i < n - 1; _i = _i + 1 {
+      c = key_between!(a, Some(c))
+      result.push(c)
     }
-    result.reverse();
-    return Ok(result);
+    result = result.rev()
+    return result
   }
-  let mid = n / 2;
+  let mid = n / 2
   let c = key_between!(a, b)
-
-  let mut result: Array[String] = [];
+  let result : Array[String] = []
   {
-    let key_r = n_keys_between!(a, Some(c.to_owned()), mid)
+    let key_r = n_keys_between!(a, Some(c), mid)
     for item in key_r {
-      result.push(item.clone());
+      result.push(item)
     }
   }
-  result.push(c);
+  result.push(c)
   {
     let key_r = n_keys_between!(Some(c), b, n - mid - 1)
     for item in key_r.iter() {
-      result.push(item.to_owned());
+      result.push(item)
     }
+  }
+  result
+}
+
+pub fn pow(x : Int, exp : Int) -> Int {
+  let mut result : Int = 1
+  for _i = 0; _i < exp; _i = _i + 1 {
+    result *= x
   }
   result
 }
