@@ -52,7 +52,7 @@ fn keys_test() -> Unit! {
 fn test_n_keys() -> Unit! {
   fn test_check(a : String?, b : String?, n : UInt, exp : String) -> Unit! {
     let act_slice = n_keys_between!(a, b, n.reinterpret_as_int())
-    let act = String::concat(act_slice)
+    let act = String::concat(act_slice, separator=" ")
     assert_eq!(exp, act)
   }
 

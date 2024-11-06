@@ -238,7 +238,7 @@ fn decrement_int(x : String) -> String!KeyError {
   while borrow && i >= 0 {
     let d = BASE62_DIGITS.index_of(digs[i].to_string()) - 1
     if d == -1 {
-      digs[i] = BASE62_DIGITS[-1]
+      digs[i] = BASE62_DIGITS[BASE62_DIGITS.length() - 1]
     } else {
       digs[i] = BASE62_DIGITS.to_array()[d]
       borrow = false
@@ -247,14 +247,15 @@ fn decrement_int(x : String) -> String!KeyError {
   }
   if borrow {
     if head == 'a' {
-      return "Z" + BASE62_DIGITS.to_array()[-1].to_string()
+      return "Z" +
+        BASE62_DIGITS.to_array()[BASE62_DIGITS.length() - 1].to_string()
     }
     if head == 'A' {
       return ""
     }
     let h = head.to_uint() - 1
     if h < 'Z'.to_uint() {
-      digs.push(BASE62_DIGITS.to_array()[-1])
+      digs.push(BASE62_DIGITS.to_array()[BASE62_DIGITS.length() - 1])
     } else {
       let _v = digs.pop()
 
