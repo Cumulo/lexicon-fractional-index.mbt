@@ -1,7 +1,12 @@
 fn keys_test() -> Unit! {
   fn test_check(a : String?, b : String?, exp : String) -> Unit! {
-    let act = key_between!(a, b)
-    assert_eq!(exp, act)
+    match key_between?(a, b) {
+      Ok(act) => assert_eq!(exp, act)
+      Err(err) =>
+        match err {
+          KeyError(s) => assert_eq!(exp, s)
+        }
+    }
   }
 
   test_check!(None, None, "a0")
@@ -51,9 +56,13 @@ fn keys_test() -> Unit! {
 
 fn test_n_keys() -> Unit! {
   fn test_check(a : String?, b : String?, n : UInt, exp : String) -> Unit! {
-    let act_slice = n_keys_between!(a, b, n.reinterpret_as_int())
-    let act = String::concat(act_slice, separator=" ")
-    assert_eq!(exp, act)
+    match n_keys_between?(a, b, n.reinterpret_as_int()) {
+      Ok(act_slice) => {
+        let act = String::concat(act_slice, separator=" ")
+        assert_eq!(exp, act)
+      }
+      Err(err) => assert_eq!(exp, err.to_string())
+    }
   }
 
   test_check!(None, None, 5, "a0 a1 a2 a3 a4")
@@ -71,12 +80,21 @@ fn test_to_float64_approx() -> Unit! {
   let t_max = @int64.max_value
   let t_max_f = t_max.to_double()
   let epsilon = 1.0 / t_max_f
-  fn test_check(key : String, exp : Float, exp_err : String) -> Unit! {
-    let act = float64_approx!(key)
-    assert_true!((exp - act.to_float()).abs() < epsilon.to_float())
+  fn test_check(key : String, exp : Double, exp_err : String) -> Unit! {
+    println("Case: " + key + " " + exp.to_string())
+    match float64_approx?(key) {
+      Ok(act) => {
+        println("act " + act.to_string() + " exp " + exp.to_string())
+        assert_true!((exp - act).abs() < epsilon)
+      }
+      Err(err) =>
+        match err {
+          KeyError(s) => assert_eq!(exp_err, s)
+        }
+    }
   }
 
-  let n_62 : Float = 62.0
+  let n_62 = 62.0
   test_check!("a0", 0.0, "")
   test_check!("a1", 1.0, "")
   test_check!("az", 61.0, "")
@@ -87,7 +105,7 @@ fn test_to_float64_approx() -> Unit! {
   test_check!("Y10", -62.0, "")
   test_check!("A20000000000000000000000000", powf(n_62, 25) * -2.0, "")
   test_check!("a0V", 0.5, "")
-  test_check!("a00V", (31.0 / powf(n_62, 2).to_double()).to_float(), "")
+  test_check!("a00V", 31.0 / powf(n_62, 2), "")
   test_check!("aVV", 31.5, "")
   test_check!("ZVV", -31.5, "")
   test_check!("", 0.0, "invalid order key")

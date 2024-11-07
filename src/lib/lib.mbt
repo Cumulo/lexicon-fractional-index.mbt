@@ -4,24 +4,50 @@ const SMALLEST_INT : String = "A00000000000000000000000000"
 
 const ZERO : String = "a0"
 
-type! KeyError String
+type! KeyError String derive(Show)
+
+/// compare them lexicographically, loop from head to tail, empty string is smallest
+fn str_compare(a : String, b : String) -> Int {
+  let mut i = 0
+  while i < a.length() && i < b.length() {
+    let ca = a[i]
+    let cb = b[i]
+    if ca < cb {
+      return -1
+    }
+    if ca > cb {
+      return 1
+    }
+    i += 1
+  }
+  if a.length() < b.length() {
+    return -1
+  }
+  if a.length() > b.length() {
+    return 1
+  }
+  0
+}
 
 /// key_between returns a key that sorts lexicographically between a and b.
 /// Either a or b can be empty strings. If a is empty it indicates smallest key,
 /// If b is empty it indicates largest key.
 /// b must be empty string or > a.
 pub fn key_between(a : String?, b : String?) -> String!KeyError {
-  // println!("between: {} {}", a, b);
+  // println("between: " + a.to_string() + " " + b.to_string())
   if not(a.is_empty()) {
     validate_order_key!(a.unwrap())
   }
   if not(b.is_empty()) {
     validate_order_key!(b.unwrap())
   }
-  if not(a.is_empty()) && not(b.is_empty()) && a >= b {
+  if not(a.is_empty()) &&
+    not(b.is_empty()) &&
+    str_compare(a.unwrap(), b.unwrap()) >= 0 {
     raise KeyError(
-      "invalid order: {} >= {}" +
+      "invalid order: " +
       a.unwrap().to_string() +
+      " >= " +
       b.unwrap().to_string(),
     )
   }
@@ -32,6 +58,7 @@ pub fn key_between(a : String?, b : String?) -> String!KeyError {
     let int_b = get_int_part!(b.unwrap())
     let float_part_b = b.unwrap().substring(start=int_b.length())
     if int_b == SMALLEST_INT {
+      // println("midpoint 1 is: " + midpoint("", float_part_b))
       return int_b + midpoint("", float_part_b)
     }
     if int_b < b.unwrap() {
@@ -48,6 +75,7 @@ pub fn key_between(a : String?, b : String?) -> String!KeyError {
     let float_part_a = a.unwrap().substring(start=int_a.length())
     let i = increment_int!(int_a)
     if i.is_empty() {
+      // println("midpoint 2 is: " + midpoint(float_part_a, ""))
       return int_a + midpoint(float_part_a, "")
     }
     return i
@@ -57,6 +85,7 @@ pub fn key_between(a : String?, b : String?) -> String!KeyError {
   let int_b = get_int_part!(b.unwrap())
   let float_part_b = b.unwrap().substring(start=int_b.length())
   if int_a == int_b {
+    // println("midpoint 3 is: " + midpoint(float_part_a, float_part_b))
     return int_a + midpoint(float_part_a, float_part_b)
   }
   let i = increment_int!(int_a)
@@ -74,6 +103,7 @@ pub fn key_between(a : String?, b : String?) -> String!KeyError {
 /// b == "" means last possible string.
 /// a, b MUST be str without head
 fn midpoint(a : String, b : String) -> String {
+  // println("midpoint: " + a + " " + b)
   if not(b.is_empty()) {
     // remove longest common prefix.  pad `a` with 0s as we
     // go.  note that we don't need to pad `b`, because it can't
@@ -82,7 +112,7 @@ fn midpoint(a : String, b : String) -> String {
     for _i = 0; _i < a.length(); _i = _i + 1 {
       let mut c : Char = '0'
       if a.length() > i {
-        c = a.to_array()[i]
+        c = a[i]
       }
       if i >= b.length() || c != b[i] {
         break
@@ -91,11 +121,10 @@ fn midpoint(a : String, b : String) -> String {
     }
     if i > 0 {
       if i > a.length() - 1 {
-        return b.substring(end=i).to_string() +
-          midpoint("", b.substring(start=i))
+        return b.substring(end=i) + midpoint("", b.substring(start=i))
       } else {
         return b.substring(end=i) +
-          midpoint(a.substring(start=1), b.substring(start=i))
+          midpoint(a.substring(start=i), b.substring(start=i))
       }
     }
   }
@@ -110,16 +139,17 @@ fn midpoint(a : String, b : String) -> String {
     digit_b = BASE62_DIGITS.index_of(b[0].to_string())
   }
   if digit_b - digit_a > 1 {
-    let mid_digit = (0.5 * (digit_a + digit_b).to_double())
-      .round()
-      .reinterpret_as_int64()
-      .to_int()
+    // println(
+    //   "DEBUG " + (0.5 * (digit_a + digit_b).to_double()).round().to_string(),
+    // )
+    let mid_digit = (0.5 * (digit_a + digit_b).to_double()).round().to_int()
+    // println("mid_digit: " + mid_digit.to_string())
     return BASE62_DIGITS[mid_digit].to_string()
   }
 
   // first digits are consecutive
   if b.length() > 1 {
-    if not(b.starts_with('0'.to_string())) {
+    if not(b.starts_with("0")) {
       return b.substring(end=1)
     }
     return BASE62_DIGITS[digit_a].to_string() +
@@ -136,7 +166,7 @@ fn midpoint(a : String, b : String) -> String {
   if not(a.is_empty()) {
     sa = a.substring(start=1)
   }
-  return BASE62_DIGITS.to_array()[digit_a].to_string() + midpoint(sa, "")
+  return BASE62_DIGITS[digit_a].to_string() + midpoint(sa, "")
 }
 
 fn validate_int(i : String) -> Unit!KeyError {
@@ -184,7 +214,7 @@ fn validate_order_key(key : String) -> Unit!KeyError {
   let int_part = get_int_part!(key)
   let float_part = key.substring(start=int_part.length())
   if float_part.ends_with("0") {
-    raise KeyError("invalid order key:" + key)
+    raise KeyError("invalid order key: " + key)
   }
 }
 
@@ -214,8 +244,8 @@ fn increment_int(x : String) -> String!KeyError {
     if head == 'z' {
       return ""
     }
-    let h = head.to_uint() + 1
-    if h > 'a'.to_uint() {
+    let h = Char::from_int(head.to_int() + 1)
+    if h > 'a' {
       // a-z -> incr
       digs.push('0')
     } else {
@@ -240,21 +270,20 @@ fn decrement_int(x : String) -> String!KeyError {
     if d == -1 {
       digs[i] = BASE62_DIGITS[BASE62_DIGITS.length() - 1]
     } else {
-      digs[i] = BASE62_DIGITS.to_array()[d]
+      digs[i] = BASE62_DIGITS[d]
       borrow = false
     }
     i -= 1
   }
   if borrow {
     if head == 'a' {
-      return "Z" +
-        BASE62_DIGITS.to_array()[BASE62_DIGITS.length() - 1].to_string()
+      return "Z" + BASE62_DIGITS[BASE62_DIGITS.length() - 1].to_string()
     }
     if head == 'A' {
       return ""
     }
-    let h = head.to_uint() - 1
-    if h < 'Z'.to_uint() {
+    let h = Char::from_int(head.to_int() - 1)
+    if h < 'Z' {
       digs.push(BASE62_DIGITS.to_array()[BASE62_DIGITS.length() - 1])
     } else {
       let _v = digs.pop()
@@ -285,7 +314,7 @@ pub fn float64_approx(key : String) -> Double!KeyError {
     if p < 0 {
       raise KeyError("invalid order key: " + key)
     }
-    rv += (pow(BASE62_DIGITS.length(), i) * p).to_float().to_double()
+    rv += (pow(BASE62_DIGITS.length(), i) * p).to_double()
   }
   let fp = key.substring(start=ip.length())
   for i, d in fp.to_array() {
@@ -365,8 +394,8 @@ pub fn pow(x : Int, exp : Int) -> Int {
   result
 }
 
-pub fn powf(x : Float, exp : Int) -> Float {
-  let mut result : Float = 1.0
+pub fn powf(x : Double, exp : Int) -> Double {
+  let mut result : Double = 1.0
   for _i = 0; _i < exp; _i = _i + 1 {
     result *= x
   }

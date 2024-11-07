@@ -7,7 +7,7 @@ fn insert_end_test() -> Unit! {
     assert_not_eq!(right, Some(next))
     if not(left.is_empty()) {
       // println!("< {:?} {:?} {:?}", left, next, right);
-      assert_true!(left < Some(next))
+      assert_eq!(str_compare(left.unwrap(), next), -1)
     }
     left = Some(next)
   }
@@ -23,7 +23,15 @@ fn insert_beggining_test() -> Unit! {
     assert_not_eq!(right, Some(next))
     if not(right.is_empty()) {
       // println!("< {:?} {:?} {:?}", left, next, right);
-      assert_true!(next < right.unwrap())
+      println(
+        "< " +
+        left.to_string() +
+        " " +
+        next.to_string() +
+        " " +
+        right.to_string(),
+      )
+      assert_eq!(str_compare(next, right.unwrap()), -1)
     }
     right = Some(next)
   }
@@ -41,8 +49,8 @@ fn insert_middle_left_test() -> Unit! {
     assert_not_eq!(right.unwrap(), next)
     if not(right.is_empty()) {
       // println!("< {:?} {:?} {:?}", left, next, right);
-      assert_true!(left.unwrap() < next)
-      assert_true!(next < right.unwrap())
+      assert_eq!(str_compare(left.unwrap(), next), -1)
+      assert_eq!(str_compare(next, right.unwrap()), -1)
     }
     right = Some(next)
   }
@@ -58,8 +66,8 @@ fn insert_middle_right_test() -> Unit! {
     assert_not_eq!(right.unwrap(), next)
     if not(right.is_empty()) {
       // println!("< {:?} {:?} {:?}", left, next, right);
-      assert_true!(left.unwrap() < next)
-      assert_true!(next < right.unwrap())
+      assert_eq!(str_compare(left.unwrap(), next), -1)
+      assert_eq!(str_compare(next, right.unwrap()), -1)
     }
     left = Some(next)
   }
@@ -87,4 +95,12 @@ fn insert_middle_left_right_test() -> Unit! {
     }
   }
   println("< " + left.to_string() + " " + right.to_string())
+}
+
+test {
+  insert_end_test!()
+  insert_beggining_test!()
+  insert_middle_left_test!()
+  insert_middle_right_test!()
+  insert_middle_left_right_test!()
 }
