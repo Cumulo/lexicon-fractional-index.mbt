@@ -59,8 +59,19 @@ fn demo_3() -> Unit {
   }
 }
 
+fn demo_4() -> Unit {
+  match @lib.float64_approx?("a0V") {
+    Ok(act) => println("act " + act.to_string())
+    Err(err) =>
+      match err {
+        KeyError(s) => println("err " + s)
+      }
+  }
+}
+
 fn main {
   // demo_1()
   // demo_2()
-  demo_3()
+  // demo_3()
+  demo_4()
 }

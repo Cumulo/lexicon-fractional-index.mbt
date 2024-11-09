@@ -84,8 +84,8 @@ fn insert_middle_left_right_test() -> Unit! {
     assert_not_eq!(right.unwrap(), next)
 
     // println!("< {:?} {:?}", left, right);
-    assert_true!(left.unwrap() < next)
-    assert_true!(next < right.unwrap())
+    assert_eq!(str_compare(left.unwrap(), next), -1)
+    assert_eq!(str_compare(next, right.unwrap()), -1)
     if at_right {
       right = Some(next)
       at_right = false

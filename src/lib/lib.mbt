@@ -4,7 +4,8 @@ const SMALLEST_INT : String = "A00000000000000000000000000"
 
 const ZERO : String = "a0"
 
-type! KeyError String derive(Show)
+/// common error structure of lexicon order key
+pub type! KeyError String derive(Show)
 
 /// compare them lexicographically, loop from head to tail, empty string is smallest
 fn str_compare(a : String, b : String) -> Int {
@@ -322,7 +323,7 @@ pub fn float64_approx(key : String) -> Double!KeyError {
     if p < 0 {
       raise KeyError("invalid key: " + key)
     }
-    rv += (p / pow(BASE62_DIGITS.length(), i + 1)).to_double()
+    rv += p.to_double() / powf(BASE62_DIGITS.length().to_double(), i + 1)
   }
   if head < 'a' {
     rv *= -1.0
