@@ -6,6 +6,13 @@
 moon add tiye/lexicon-fractional-index
 ```
 
+```json
+{
+  "path": "tiye/lexicon-fractional-index",
+  "alias": "lexicon"
+}
+```
+
 ```moonbit
 key_between(a, b) // generated key between a and b
 n_key_between(a, b, n) // n generated keys between a and b

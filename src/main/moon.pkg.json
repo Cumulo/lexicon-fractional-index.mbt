@@ -1,4 +1,9 @@
 {
   "is-main": true,
-  "import": ["tiye/lexicon-fractional-index/lib"]
+  "import": [
+    {
+      "path": "tiye/lexicon-fractional-index",
+      "alias": "lib"
+    }
+  ]
 }
