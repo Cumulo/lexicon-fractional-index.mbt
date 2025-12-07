@@ -1,12 +1,17 @@
+///|
 const BASE62_DIGITS : String = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
+///|
 const SMALLEST_INT : String = "A00000000000000000000000000"
 
+///|
 const ZERO : String = "a0"
 
+///|
 /// common error structure of lexicon order key
-pub type! KeyError String derive(Show)
+pub suberror KeyError String derive(Show)
 
+///|
 /// compare them lexicographically, loop from head to tail, empty string is smallest
 fn str_compare(a : String, b : String) -> Int {
   let mut i = 0
@@ -30,17 +35,18 @@ fn str_compare(a : String, b : String) -> Int {
   0
 }
 
+///|
 /// key_between returns a key that sorts lexicographically between a and b.
 /// Either a or b can be empty strings. If a is empty it indicates smallest key,
 /// If b is empty it indicates largest key.
 /// b must be empty string or > a.
-pub fn key_between(a : String?, b : String?) -> String!KeyError {
+pub fn key_between(a : String?, b : String?) -> String raise KeyError {
   // println("between: " + a.to_string() + " " + b.to_string())
   if not(a.is_empty()) {
-    validate_order_key!(a.unwrap())
+    validate_order_key(a.unwrap())
   }
   if not(b.is_empty()) {
-    validate_order_key!(b.unwrap())
+    validate_order_key(b.unwrap())
   }
   if not(a.is_empty()) &&
     not(b.is_empty()) &&
@@ -56,7 +62,7 @@ pub fn key_between(a : String?, b : String?) -> String!KeyError {
     if b.is_empty() {
       return ZERO
     }
-    let int_b = get_int_part!(b.unwrap())
+    let int_b = get_int_part(b.unwrap())
     let float_part_b = b.unwrap().substring(start=int_b.length())
     if int_b == SMALLEST_INT {
       // println("midpoint 1 is: " + midpoint("", float_part_b))
@@ -65,31 +71,31 @@ pub fn key_between(a : String?, b : String?) -> String!KeyError {
     if int_b < b.unwrap() {
       return int_b
     }
-    let res = decrement_int!(int_b)
+    let res = decrement_int(int_b)
     if res.is_empty() {
       raise KeyError("range underflow")
     }
     return res
   }
   if b.is_empty() {
-    let int_a = get_int_part!(a.unwrap())
+    let int_a = get_int_part(a.unwrap())
     let float_part_a = a.unwrap().substring(start=int_a.length())
-    let i = increment_int!(int_a)
+    let i = increment_int(int_a)
     if i.is_empty() {
       // println("midpoint 2 is: " + midpoint(float_part_a, ""))
       return int_a + midpoint(float_part_a, "")
     }
     return i
   }
-  let int_a = get_int_part!(a.unwrap())
+  let int_a = get_int_part(a.unwrap())
   let float_part_a = a.unwrap().substring(start=int_a.length())
-  let int_b = get_int_part!(b.unwrap())
+  let int_b = get_int_part(b.unwrap())
   let float_part_b = b.unwrap().substring(start=int_b.length())
   if int_a == int_b {
     // println("midpoint 3 is: " + midpoint(float_part_a, float_part_b))
     return int_a + midpoint(float_part_a, float_part_b)
   }
-  let i = increment_int!(int_a)
+  let i = increment_int(int_a)
   if i.is_empty() {
     raise KeyError("range overflow")
   }
@@ -99,6 +105,7 @@ pub fn key_between(a : String?, b : String?) -> String!KeyError {
   int_a + midpoint(float_part_a, "")
 }
 
+///|
 /// `a < b` lexicographically if `b` is non-empty.
 /// a == "" means first possible string.
 /// b == "" means last possible string.
@@ -170,18 +177,19 @@ fn midpoint(a : String, b : String) -> String {
   return BASE62_DIGITS[digit_a].to_string() + midpoint(sa, "")
 }
 
-fn validate_int(i : String) -> Unit!KeyError {
-  let exp = get_int_len!(i[0])
+///|
+fn validate_int(i : String) -> Unit raise KeyError {
+  let exp = get_int_len(i[0])
   if i.length() != exp {
     raise KeyError("invalid integer part of order key: " + i)
   }
 }
 
-///
+///|
 // length map:
 // A-Z -> 28-2
 // a-z -> 2-28
-fn get_int_len(head : Char) -> Int!KeyError {
+fn get_int_len(head : Char) -> Int raise KeyError {
   if 'a' <= head && head <= 'z' {
     head.to_int() - 'a'.to_int() + 2
   } else if 'A' <= head && head <= 'Z' {
@@ -191,38 +199,41 @@ fn get_int_len(head : Char) -> Int!KeyError {
   }
 }
 
+///|
 /// throw error when shorter than `get_int_len(head)`
-fn get_int_part(key : String) -> String!KeyError {
-  let int_part_len = get_int_len!(key[0])
+fn get_int_part(key : String) -> String raise KeyError {
+  let int_part_len = get_int_len(key[0])
   if int_part_len > key.length() {
     raise KeyError("invalid order key: " + key)
   }
   key.substring(start=0, end=int_part_len)
 }
 
+///|
 /// throw when:
 /// first charater is not valid head
 /// short than `get_int_len(head)`
 /// ends with 0
 ///
-fn validate_order_key(key : String) -> Unit!KeyError {
+fn validate_order_key(key : String) -> Unit raise KeyError {
   if key == SMALLEST_INT {
     raise KeyError("invalid order key: " + key)
   }
   // get_int_part will return error if the first character is bad,
   // or the key is too short.  we'd call it to check these things
   // even if we didn't need the result
-  let int_part = get_int_part!(key)
+  let int_part = get_int_part(key)
   let float_part = key.substring(start=int_part.length())
   if float_part.ends_with("0") {
     raise KeyError("invalid order key: " + key)
   }
 }
 
+///|
 /// returns error if x is invalid, or if range is exceeded
 /// x MUST be int without float part
-fn increment_int(x : String) -> String!KeyError {
-  validate_int!(x)
+fn increment_int(x : String) -> String raise KeyError {
+  validate_int(x)
   let digs : Array[Char] = x.to_array()
   let head = digs[0]
   let _v = digs.remove(0)
@@ -259,8 +270,9 @@ fn increment_int(x : String) -> String!KeyError {
   head.to_string() + String::from_array(digs)
 }
 
-fn decrement_int(x : String) -> String!KeyError {
-  validate_int!(x)
+///|
+fn decrement_int(x : String) -> String raise KeyError {
+  validate_int(x)
   let digs : Array[Char] = x.to_array()
   let head = digs[0]
   let _t = digs.remove(0)
@@ -295,16 +307,17 @@ fn decrement_int(x : String) -> String!KeyError {
   head.to_string() + String::from_array(digs)
 }
 
+///|
 /// float64_approx converts a key as generated by key_between() to a float64.
 /// Because the range of keys is far larger than float64 can represent
 /// accurately, this is necessarily approximate. But for many use cases it should
 /// be, as they say, close enough for jazz.
-pub fn float64_approx(key : String) -> Double!KeyError {
+pub fn float64_approx(key : String) -> Double raise KeyError {
   if key.is_empty() {
     raise KeyError("invalid order key")
   }
-  validate_order_key!(key)
-  let ip = get_int_part!(key)
+  validate_order_key(key)
+  let ip = get_int_part(key)
   let digs : Array[Char] = ip.to_array()
   let head = digs[0]
   let _v = digs.remove(0)
@@ -331,6 +344,7 @@ pub fn float64_approx(key : String) -> Double!KeyError {
   rv
 }
 
+///|
 /// n_keys_between returns n keys between a and b that sorts lexicographically.
 /// Either a or b can be empty strings. If a is empty it indicates smallest key,
 /// If b is empty it indicates largest key.
@@ -338,48 +352,48 @@ pub fn float64_approx(key : String) -> Double!KeyError {
 pub fn n_keys_between(
   a : String?,
   b : String?,
-  n : Int
-) -> Array[String]!KeyError {
+  n : Int,
+) -> Array[String] raise KeyError {
   if n == 0 {
     return []
   }
   if n == 1 {
-    let c = key_between!(a, b)
+    let c = key_between(a, b)
     return [c]
   }
   if b.is_empty() {
-    let mut c = key_between!(a, b)
+    let mut c = key_between(a, b)
     let result : Array[String] = []
     result.push(c)
     for _i = 0; _i < n - 1; _i = _i + 1 {
-      c = key_between!(Some(c), b)
+      c = key_between(Some(c), b)
       result.push(c)
     }
     return result
   }
   if a.is_empty() {
-    let mut c = key_between!(a, b)
+    let mut c = key_between(a, b)
     let mut result : Array[String] = []
     result.push(c)
     for _i = 0; _i < n - 1; _i = _i + 1 {
-      c = key_between!(a, Some(c))
+      c = key_between(a, Some(c))
       result.push(c)
     }
     result = result.rev()
     return result
   }
   let mid = n / 2
-  let c = key_between!(a, b)
+  let c = key_between(a, b)
   let result : Array[String] = []
   {
-    let key_r = n_keys_between!(a, Some(c), mid)
+    let key_r = n_keys_between(a, Some(c), mid)
     for item in key_r {
       result.push(item)
     }
   }
   result.push(c)
   {
-    let key_r = n_keys_between!(Some(c), b, n - mid - 1)
+    let key_r = n_keys_between(Some(c), b, n - mid - 1)
     for item in key_r.iter() {
       result.push(item)
     }
@@ -387,6 +401,7 @@ pub fn n_keys_between(
   result
 }
 
+///|
 pub fn pow(x : Int, exp : Int) -> Int {
   let mut result : Int = 1
   for _i = 0; _i < exp; _i = _i + 1 {
@@ -395,6 +410,7 @@ pub fn pow(x : Int, exp : Int) -> Int {
   result
 }
 
+///|
 pub fn powf(x : Double, exp : Int) -> Double {
   let mut result : Double = 1.0
   for _i = 0; _i < exp; _i = _i + 1 {
