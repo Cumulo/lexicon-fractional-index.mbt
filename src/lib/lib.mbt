@@ -12,12 +12,39 @@ const ZERO : String = "a0"
 pub suberror KeyError String derive(Show)
 
 ///|
+/// Helper function to find the index of a character in BASE62_DIGITS
+fn base62_index_of(c : Char) -> Int {
+  match BASE62_DIGITS.find(c.to_string()[:]) {
+    Some(i) => i
+    None => -1
+  }
+}
+
+///|
+/// Helper function to get a character at index in BASE62_DIGITS
+fn base62_char_at(i : Int) -> Char {
+  match BASE62_DIGITS.get_char(i) {
+    Some(c) => c
+    None => '0' // fallback, should not happen
+  }
+}
+
+///|
+/// Helper function to get a character from a string safely
+fn get_char_at(s : String, i : Int) -> Char {
+  match s.get_char(i) {
+    Some(c) => c
+    None => '0' // fallback
+  }
+}
+
+///|
 /// compare them lexicographically, loop from head to tail, empty string is smallest
 fn str_compare(a : String, b : String) -> Int {
   let mut i = 0
   while i < a.length() && i < b.length() {
-    let ca = a[i]
-    let cb = b[i]
+    let ca = a.code_unit_at(i)
+    let cb = b.code_unit_at(i)
     if ca < cb {
       return -1
     }
@@ -42,67 +69,72 @@ fn str_compare(a : String, b : String) -> Int {
 /// b must be empty string or > a.
 pub fn key_between(a : String?, b : String?) -> String raise KeyError {
   // println("between: " + a.to_string() + " " + b.to_string())
-  if not(a.is_empty()) {
-    validate_order_key(a.unwrap())
+  match a {
+    Some(av) => validate_order_key(av)
+    None => ()
   }
-  if not(b.is_empty()) {
-    validate_order_key(b.unwrap())
+  match b {
+    Some(bv) => validate_order_key(bv)
+    None => ()
   }
-  if not(a.is_empty()) &&
-    not(b.is_empty()) &&
-    str_compare(a.unwrap(), b.unwrap()) >= 0 {
-    raise KeyError(
-      "invalid order: " +
-      a.unwrap().to_string() +
-      " >= " +
-      b.unwrap().to_string(),
-    )
+  match (a, b) {
+    (Some(av), Some(bv)) if str_compare(av, bv) >= 0 =>
+      raise KeyError("invalid order: " + av + " >= " + bv)
+    _ => ()
   }
-  if a.is_empty() {
-    if b.is_empty() {
-      return ZERO
-    }
-    let int_b = get_int_part(b.unwrap())
-    let float_part_b = b.unwrap().substring(start=int_b.length())
-    if int_b == SMALLEST_INT {
-      // println("midpoint 1 is: " + midpoint("", float_part_b))
-      return int_b + midpoint("", float_part_b)
-    }
-    if int_b < b.unwrap() {
-      return int_b
-    }
-    let res = decrement_int(int_b)
-    if res.is_empty() {
-      raise KeyError("range underflow")
-    }
-    return res
+  match a {
+    None =>
+      match b {
+        None => return ZERO
+        Some(bv) => {
+          let int_b = get_int_part(bv)
+          let float_part_b = try! bv[int_b.length():].to_string()
+          if int_b == SMALLEST_INT {
+            // println("midpoint 1 is: " + midpoint("", float_part_b))
+            return int_b + midpoint("", float_part_b)
+          }
+          if int_b < bv {
+            return int_b
+          }
+          let res = decrement_int(int_b)
+          if res.is_empty() {
+            raise KeyError("range underflow")
+          }
+          return res
+        }
+      }
+    Some(av) =>
+      match b {
+        None => {
+          let int_a = get_int_part(av)
+          let float_part_a = try! av[int_a.length():].to_string()
+          let i = increment_int(int_a)
+          if i.is_empty() {
+            // println("midpoint 2 is: " + midpoint(float_part_a, ""))
+            return int_a + midpoint(float_part_a, "")
+          }
+          return i
+        }
+        Some(bv) => {
+          let int_a = get_int_part(av)
+          let float_part_a = try! av[int_a.length():].to_string()
+          let int_b = get_int_part(bv)
+          let float_part_b = try! bv[int_b.length():].to_string()
+          if int_a == int_b {
+            // println("midpoint 3 is: " + midpoint(float_part_a, float_part_b))
+            return int_a + midpoint(float_part_a, float_part_b)
+          }
+          let i = increment_int(int_a)
+          if i.is_empty() {
+            raise KeyError("range overflow")
+          }
+          if i < bv {
+            return i
+          }
+          return int_a + midpoint(float_part_a, "")
+        }
+      }
   }
-  if b.is_empty() {
-    let int_a = get_int_part(a.unwrap())
-    let float_part_a = a.unwrap().substring(start=int_a.length())
-    let i = increment_int(int_a)
-    if i.is_empty() {
-      // println("midpoint 2 is: " + midpoint(float_part_a, ""))
-      return int_a + midpoint(float_part_a, "")
-    }
-    return i
-  }
-  let int_a = get_int_part(a.unwrap())
-  let float_part_a = a.unwrap().substring(start=int_a.length())
-  let int_b = get_int_part(b.unwrap())
-  let float_part_b = b.unwrap().substring(start=int_b.length())
-  if int_a == int_b {
-    // println("midpoint 3 is: " + midpoint(float_part_a, float_part_b))
-    return int_a + midpoint(float_part_a, float_part_b)
-  }
-  let i = increment_int(int_a)
-  if i.is_empty() {
-    raise KeyError("range overflow")
-  }
-  if i < b.unwrap() {
-    return i
-  }
-  int_a + midpoint(float_part_a, "")
 }
 
 ///|
@@ -120,19 +152,19 @@ fn midpoint(a : String, b : String) -> String {
     for _i = 0; _i < a.length(); _i = _i + 1 {
       let mut c : Char = '0'
       if a.length() > i {
-        c = a[i]
+        c = get_char_at(a, i)
       }
-      if i >= b.length() || c != b[i] {
+      if i >= b.length() || c != get_char_at(b, i) {
         break
       }
       i += 1
     }
     if i > 0 {
       if i > a.length() - 1 {
-        return b.substring(end=i) + midpoint("", b.substring(start=i))
+        return try! (b[:i].to_string() + midpoint("", try! b[i:].to_string()))
       } else {
-        return b.substring(end=i) +
-          midpoint(a.substring(start=i), b.substring(start=i))
+        return try! (b[:i].to_string() +
+        midpoint(try! a[i:].to_string(), try! b[i:].to_string()))
       }
     }
   }
@@ -140,11 +172,11 @@ fn midpoint(a : String, b : String) -> String {
   // first digits (or lack of digit) are different
   let mut digit_a = 0
   if not(a.is_empty()) {
-    digit_a = BASE62_DIGITS.index_of(a[0].to_string())
+    digit_a = base62_index_of(get_char_at(a, 0))
   }
   let mut digit_b = BASE62_DIGITS.length()
   if not(b.is_empty()) {
-    digit_b = BASE62_DIGITS.index_of(b[0].to_string())
+    digit_b = base62_index_of(get_char_at(b, 0))
   }
   if digit_b - digit_a > 1 {
     // println(
@@ -152,16 +184,16 @@ fn midpoint(a : String, b : String) -> String {
     // )
     let mid_digit = (0.5 * (digit_a + digit_b).to_double()).round().to_int()
     // println("mid_digit: " + mid_digit.to_string())
-    return BASE62_DIGITS[mid_digit].to_string()
+    return base62_char_at(mid_digit).to_string()
   }
 
   // first digits are consecutive
   if b.length() > 1 {
-    if not(b.starts_with("0")) {
-      return b.substring(end=1)
+    if not(b.has_prefix("0")) {
+      return try! b[:1].to_string()
     }
-    return BASE62_DIGITS[digit_a].to_string() +
-      midpoint("", b.substring(start=1))
+    return base62_char_at(digit_a).to_string() +
+      midpoint("", try! b[1:].to_string())
   }
 
   // `b` is empty or has length 1 (a single digit).
@@ -172,14 +204,14 @@ fn midpoint(a : String, b : String) -> String {
   // '4' + '9' + midpoint('', null), which is '495'
   let mut sa = ""
   if not(a.is_empty()) {
-    sa = a.substring(start=1)
+    sa = try! a[1:].to_string()
   }
-  return BASE62_DIGITS[digit_a].to_string() + midpoint(sa, "")
+  return base62_char_at(digit_a).to_string() + midpoint(sa, "")
 }
 
 ///|
 fn validate_int(i : String) -> Unit raise KeyError {
-  let exp = get_int_len(i[0])
+  let exp = get_int_len(get_char_at(i, 0))
   if i.length() != exp {
     raise KeyError("invalid integer part of order key: " + i)
   }
@@ -202,11 +234,11 @@ fn get_int_len(head : Char) -> Int raise KeyError {
 ///|
 /// throw error when shorter than `get_int_len(head)`
 fn get_int_part(key : String) -> String raise KeyError {
-  let int_part_len = get_int_len(key[0])
+  let int_part_len = get_int_len(get_char_at(key, 0))
   if int_part_len > key.length() {
     raise KeyError("invalid order key: " + key)
   }
-  key.substring(start=0, end=int_part_len)
+  try! key[:int_part_len].to_string()
 }
 
 ///|
@@ -223,8 +255,8 @@ fn validate_order_key(key : String) -> Unit raise KeyError {
   // or the key is too short.  we'd call it to check these things
   // even if we didn't need the result
   let int_part = get_int_part(key)
-  let float_part = key.substring(start=int_part.length())
-  if float_part.ends_with("0") {
+  let float_part = try! key[int_part.length():].to_string()
+  if float_part.has_suffix("0") {
     raise KeyError("invalid order key: " + key)
   }
 }
@@ -240,11 +272,11 @@ fn increment_int(x : String) -> String raise KeyError {
   let mut carry = true
   let mut i = digs.length() - 1
   while carry && i >= 0 {
-    let d = BASE62_DIGITS.index_of(digs[i].to_string()) + 1
+    let d = base62_index_of(digs[i]) + 1
     if d == BASE62_DIGITS.length() {
       digs[i] = '0'
     } else {
-      digs[i] = BASE62_DIGITS.to_array()[d]
+      digs[i] = base62_char_at(d)
       carry = false
     }
     i -= 1
@@ -256,7 +288,7 @@ fn increment_int(x : String) -> String raise KeyError {
     if head == 'z' {
       return ""
     }
-    let h = Char::from_int(head.to_int() + 1)
+    let h = (head.to_int() + 1).unsafe_to_char()
     if h > 'a' {
       // a-z -> incr
       digs.push('0')
@@ -279,25 +311,25 @@ fn decrement_int(x : String) -> String raise KeyError {
   let mut borrow = true
   let mut i = digs.length() - 1
   while borrow && i >= 0 {
-    let d = BASE62_DIGITS.index_of(digs[i].to_string()) - 1
+    let d = base62_index_of(digs[i]) - 1
     if d == -1 {
-      digs[i] = BASE62_DIGITS[BASE62_DIGITS.length() - 1]
+      digs[i] = base62_char_at(BASE62_DIGITS.length() - 1)
     } else {
-      digs[i] = BASE62_DIGITS[d]
+      digs[i] = base62_char_at(d)
       borrow = false
     }
     i -= 1
   }
   if borrow {
     if head == 'a' {
-      return "Z" + BASE62_DIGITS[BASE62_DIGITS.length() - 1].to_string()
+      return "Z" + base62_char_at(BASE62_DIGITS.length() - 1).to_string()
     }
     if head == 'A' {
       return ""
     }
-    let h = Char::from_int(head.to_int() - 1)
+    let h = (head.to_int() - 1).unsafe_to_char()
     if h < 'Z' {
-      digs.push(BASE62_DIGITS.to_array()[BASE62_DIGITS.length() - 1])
+      digs.push(base62_char_at(BASE62_DIGITS.length() - 1))
     } else {
       let _v = digs.pop()
 
@@ -324,15 +356,15 @@ pub fn float64_approx(key : String) -> Double raise KeyError {
   let mut rv : Double = 0.0
   for i = 0; i < digs.length(); i = i + 1 {
     let d = digs[digs.length() - i - 1]
-    let p = BASE62_DIGITS.index_of(d.to_string())
+    let p = base62_index_of(d)
     if p < 0 {
       raise KeyError("invalid order key: " + key)
     }
     rv += (pow(BASE62_DIGITS.length(), i) * p).to_double()
   }
-  let fp = key.substring(start=ip.length())
+  let fp = try! key[ip.length():].to_string()
   for i, d in fp.to_array() {
-    let p = BASE62_DIGITS.index_of(d.to_string())
+    let p = base62_index_of(d)
     if p < 0 {
       raise KeyError("invalid key: " + key)
     }
@@ -361,44 +393,51 @@ pub fn n_keys_between(
     let c = key_between(a, b)
     return [c]
   }
-  if b.is_empty() {
-    let mut c = key_between(a, b)
-    let result : Array[String] = []
-    result.push(c)
-    for _i = 0; _i < n - 1; _i = _i + 1 {
-      c = key_between(Some(c), b)
+  match b {
+    None => {
+      let mut c = key_between(a, b)
+      let result : Array[String] = []
       result.push(c)
+      for _i = 0; _i < n - 1; _i = _i + 1 {
+        c = key_between(Some(c), b)
+        result.push(c)
+      }
+      return result
     }
-    return result
+    Some(_) =>
+      match a {
+        None => {
+          let mut c = key_between(a, b)
+          let mut result : Array[String] = []
+          result.push(c)
+          for _i = 0; _i < n - 1; _i = _i + 1 {
+            c = key_between(a, Some(c))
+            result.push(c)
+          }
+          result = result.rev()
+          return result
+        }
+        Some(_) => {
+          let mid = n / 2
+          let c = key_between(a, b)
+          let result : Array[String] = []
+          {
+            let key_r = n_keys_between(a, Some(c), mid)
+            for item in key_r {
+              result.push(item)
+            }
+          }
+          result.push(c)
+          {
+            let key_r = n_keys_between(Some(c), b, n - mid - 1)
+            for item in key_r.iter() {
+              result.push(item)
+            }
+          }
+          return result
+        }
+      }
   }
-  if a.is_empty() {
-    let mut c = key_between(a, b)
-    let mut result : Array[String] = []
-    result.push(c)
-    for _i = 0; _i < n - 1; _i = _i + 1 {
-      c = key_between(a, Some(c))
-      result.push(c)
-    }
-    result = result.rev()
-    return result
-  }
-  let mid = n / 2
-  let c = key_between(a, b)
-  let result : Array[String] = []
-  {
-    let key_r = n_keys_between(a, Some(c), mid)
-    for item in key_r {
-      result.push(item)
-    }
-  }
-  result.push(c)
-  {
-    let key_r = n_keys_between(Some(c), b, n - mid - 1)
-    for item in key_r.iter() {
-      result.push(item)
-    }
-  }
-  result
 }
 
 ///|

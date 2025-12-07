@@ -6,7 +6,7 @@ fn insert_end_test() -> Unit raise {
     let next = key_between(left, right)
     assert_not_eq(left, Some(next))
     assert_not_eq(right, Some(next))
-    if not(left.is_empty()) {
+    if left is Some(_) {
       // println!("< {:?} {:?} {:?}", left, next, right);
       assert_eq(str_compare(left.unwrap(), next), -1)
     }
@@ -23,7 +23,7 @@ fn insert_beggining_test() -> Unit raise {
     let next = key_between(left, right)
     assert_not_eq(left, Some(next))
     assert_not_eq(right, Some(next))
-    if not(right.is_empty()) {
+    if right is Some(_) {
       // println!("< {:?} {:?} {:?}", left, next, right);
       println(
         "< " +
@@ -50,7 +50,7 @@ fn insert_middle_left_test() -> Unit raise {
     let next = key_between(left, right)
     assert_not_eq(left.unwrap(), next)
     assert_not_eq(right.unwrap(), next)
-    if not(right.is_empty()) {
+    if right is Some(_) {
       // println!("< {:?} {:?} {:?}", left, next, right);
       assert_eq(str_compare(left.unwrap(), next), -1)
       assert_eq(str_compare(next, right.unwrap()), -1)
@@ -68,7 +68,7 @@ fn insert_middle_right_test() -> Unit raise {
     let next = key_between(left, right)
     assert_not_eq(left.unwrap(), next)
     assert_not_eq(right.unwrap(), next)
-    if not(right.is_empty()) {
+    if right is Some(_) {
       // println!("< {:?} {:?} {:?}", left, next, right);
       assert_eq(str_compare(left.unwrap(), next), -1)
       assert_eq(str_compare(next, right.unwrap()), -1)
