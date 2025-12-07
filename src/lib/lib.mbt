@@ -144,39 +144,40 @@ pub fn key_between(a : String?, b : String?) -> String raise KeyError {
 /// a, b MUST be str without head
 fn midpoint(a : String, b : String) -> String {
   // println("midpoint: " + a + " " + b)
-  if not(b.is_empty()) {
+  if b.length() > 0 {
     // remove longest common prefix.  pad `a` with 0s as we
     // go.  note that we don't need to pad `b`, because it can't
     // end before `a` while traversing the common prefix.
     let mut i = 0
-    for _i = 0; _i < a.length(); _i = _i + 1 {
-      let mut c : Char = '0'
-      if a.length() > i {
-        c = get_char_at(a, i)
-      }
+    for _ in 0..<a.length() {
+      let c = if a.length() > i { get_char_at(a, i) } else { '0' }
       if i >= b.length() || c != get_char_at(b, i) {
         break
       }
       i += 1
     }
     if i > 0 {
+      let prefix = try! b[:i].to_string()
+      let b_suffix = try! b[i:].to_string()
       if i > a.length() - 1 {
-        return try! (b[:i].to_string() + midpoint("", try! b[i:].to_string()))
+        return prefix + midpoint("", b_suffix)
       } else {
-        return try! (b[:i].to_string() +
-        midpoint(try! a[i:].to_string(), try! b[i:].to_string()))
+        let a_suffix = try! a[i:].to_string()
+        return prefix + midpoint(a_suffix, b_suffix)
       }
     }
   }
 
   // first digits (or lack of digit) are different
-  let mut digit_a = 0
-  if not(a.is_empty()) {
-    digit_a = base62_index_of(get_char_at(a, 0))
+  let digit_a = if a.length() > 0 {
+    base62_index_of(get_char_at(a, 0))
+  } else {
+    0
   }
-  let mut digit_b = BASE62_DIGITS.length()
-  if not(b.is_empty()) {
-    digit_b = base62_index_of(get_char_at(b, 0))
+  let digit_b = if b.length() > 0 {
+    base62_index_of(get_char_at(b, 0))
+  } else {
+    BASE62_DIGITS.length()
   }
   if digit_b - digit_a > 1 {
     // println(
@@ -202,11 +203,8 @@ fn midpoint(a : String, b : String) -> String {
   // given, for example, midpoint('49', '5'), return
   // '4' + midpoint('9', null), which will become
   // '4' + '9' + midpoint('', null), which is '495'
-  let mut sa = ""
-  if not(a.is_empty()) {
-    sa = try! a[1:].to_string()
-  }
-  return base62_char_at(digit_a).to_string() + midpoint(sa, "")
+  let suffix_a = if a.length() > 0 { try! a[1:].to_string() } else { "" }
+  base62_char_at(digit_a).to_string() + midpoint(suffix_a, "")
 }
 
 ///|
@@ -390,53 +388,39 @@ pub fn n_keys_between(
     return []
   }
   if n == 1 {
-    let c = key_between(a, b)
-    return [c]
+    return [key_between(a, b)]
   }
-  match b {
-    None => {
-      let mut c = key_between(a, b)
+  match (a, b) {
+    (_, None) => {
+      // Append to end: generate keys one after another
       let result : Array[String] = []
+      let mut c = key_between(a, None)
       result.push(c)
-      for _i = 0; _i < n - 1; _i = _i + 1 {
-        c = key_between(Some(c), b)
+      for _ in 0..<(n - 1) {
+        c = key_between(Some(c), None)
         result.push(c)
       }
-      return result
+      result
     }
-    Some(_) =>
-      match a {
-        None => {
-          let mut c = key_between(a, b)
-          let mut result : Array[String] = []
-          result.push(c)
-          for _i = 0; _i < n - 1; _i = _i + 1 {
-            c = key_between(a, Some(c))
-            result.push(c)
-          }
-          result = result.rev()
-          return result
-        }
-        Some(_) => {
-          let mid = n / 2
-          let c = key_between(a, b)
-          let result : Array[String] = []
-          {
-            let key_r = n_keys_between(a, Some(c), mid)
-            for item in key_r {
-              result.push(item)
-            }
-          }
-          result.push(c)
-          {
-            let key_r = n_keys_between(Some(c), b, n - mid - 1)
-            for item in key_r.iter() {
-              result.push(item)
-            }
-          }
-          return result
-        }
+    (None, Some(_)) => {
+      // Prepend to start: generate keys before b, then reverse
+      let result : Array[String] = []
+      let mut c = key_between(None, b)
+      result.push(c)
+      for _ in 0..<(n - 1) {
+        c = key_between(None, Some(c))
+        result.push(c)
       }
+      result.rev()
+    }
+    (Some(_), Some(_)) => {
+      // Insert in middle: divide and conquer
+      let mid = n / 2
+      let c = key_between(a, b)
+      let left = n_keys_between(a, Some(c), mid)
+      let right = n_keys_between(Some(c), b, n - mid - 1)
+      left + [c] + right
+    }
   }
 }
 
