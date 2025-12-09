@@ -126,9 +126,44 @@ fn test_to_float64_approx_errors() -> Unit raise {
 }
 
 ///|
+fn assert_strictly_sorted(keys : Array[String]) -> Unit raise {
+  for i = 1; i < keys.length(); i = i + 1 {
+    assert_true(str_compare(keys[i - 1], keys[i]) < 0)
+  }
+}
+
+///|
+fn test_left_insertions() -> Unit raise {
+  let mut keys : Array[String] = []
+  let first = key_between(None, None)
+  keys.push(first)
+  for _ in 0..<200 {
+    let current_min = keys[0]
+    let new_key = key_between(None, Some(current_min))
+    keys = [new_key] + keys
+    assert_strictly_sorted(keys)
+  }
+}
+
+///|
+fn test_right_insertions() -> Unit raise {
+  let keys : Array[String] = []
+  let first = key_between(None, None)
+  keys.push(first)
+  for _ in 0..<200 {
+    let current_max = keys[keys.length() - 1]
+    let new_key = key_between(Some(current_max), None)
+    keys.push(new_key)
+    assert_strictly_sorted(keys)
+  }
+}
+
+///|
 test {
   keys_test()
   test_n_keys()
   test_to_float64_approx()
   test_to_float64_approx_errors()
+  test_left_insertions()
+  test_right_insertions()
 }
